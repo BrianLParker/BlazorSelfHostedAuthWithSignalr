@@ -1,4 +1,5 @@
 using BlazorSelfHostedAuthWithSignalr.Server.Data;
+using BlazorSelfHostedAuthWithSignalr.Server.Hubs;
 using BlazorSelfHostedAuthWithSignalr.Server.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -13,6 +14,12 @@ namespace BlazorSelfHostedAuthWithSignalr
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddSignalR();
+            builder.Services.AddResponseCompression(opts =>
+            {
+                opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+                    new[] { "application/octet-stream" });
+            });
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(connectionString));
@@ -33,6 +40,7 @@ namespace BlazorSelfHostedAuthWithSignalr
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
+            app.UseResponseCompression();
             if (app.Environment.IsDevelopment())
             {
                 app.UseMigrationsEndPoint();
@@ -59,7 +67,8 @@ namespace BlazorSelfHostedAuthWithSignalr
 
             app.MapRazorPages();
             app.MapControllers();
-            app.MapFallbackToFile("index.html");
+            app.MapHub<ChatHub>(pattern: "/chathub");
+            app.MapFallbackToFile(filePath: "index.html");
 
             app.Run();
         }
