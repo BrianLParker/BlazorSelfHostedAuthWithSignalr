@@ -1,9 +1,12 @@
-﻿@using Microsoft.AspNetCore.Authorization
+﻿@using BlazorSelfHostedAuthWithSignalr.Client.Models.Configurations
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using Microsoft.AspNetCore.SignalR.Client
 @page "/chat"
 @attribute [Authorize]
 @inject NavigationManager NavigationManager
+@inject LocalConfiguration Configuration
+@inject IAccessTokenProvider AccessTokenProvider
 @implements IAsyncDisposable
 
 <PageTitle>Chat</PageTitle>
@@ -36,12 +39,10 @@
     private List<string> messages = new List<string>();
     private string? userInput;
     private string? messageInput;
-    [Inject]
-    private IAccessTokenProvider AccessTokenProvider { get; set; }
     protected override async Task OnInitializedAsync()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"), options =>
+            .WithUrl(NavigationManager.ToAbsoluteUri($"/{Configuration.Chat.Endpoint}"), options =>
             {
                 options.AccessTokenProvider = async () =>
                 {
@@ -65,9 +66,9 @@
     private async Task Send()
     {
         if (hubConnection is not null)
-            {
-                await hubConnection.SendAsync("SendMessage", userInput, messageInput);
-            }
+        {
+            await hubConnection.SendAsync("SendMessage", userInput, messageInput);
+        }
     }
 
     public bool IsConnected =>

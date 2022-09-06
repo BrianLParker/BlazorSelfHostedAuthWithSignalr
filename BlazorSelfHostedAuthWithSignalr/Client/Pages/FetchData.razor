@@ -1,9 +1,9 @@
 ﻿@page "/fetchdata"
+@using BlazorSelfHostedAuthWithSignalr.Client.Models.Configurations
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using BlazorSelfHostedAuthWithSignalr.Shared
 @attribute [Authorize]
-@inject HttpClient Http
 
 <PageTitle>Weather forecast</PageTitle>
 
@@ -41,13 +41,17 @@ else
 }
 
 @code {
+    [Inject] private LocalConfiguration Configuration { get; set; } = default!;
+    [Inject] private IHttpClientFactory HttpClientFactory { get; set; } = default!;
     private WeatherForecast[]? forecasts;
 
     protected override async Task OnInitializedAsync()
     {
+        HttpClient http = HttpClientFactory.CreateClient(Configuration.Http.ClientName);
+
         try
         {
-            forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("WeatherForecast");
+            forecasts = await http.GetFromJsonAsync<WeatherForecast[]>("WeatherForecast");
         }
         catch (AccessTokenNotAvailableException exception)
         {
