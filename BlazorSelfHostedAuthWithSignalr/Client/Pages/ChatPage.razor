@@ -1,5 +1,8 @@
-﻿@page "/chat"
+﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using Microsoft.AspNetCore.SignalR.Client
+@page "/chat"
+@attribute [Authorize]
 @inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
@@ -33,11 +36,20 @@
     private List<string> messages = new List<string>();
     private string? userInput;
     private string? messageInput;
-
+    [Inject]
+    private IAccessTokenProvider AccessTokenProvider { get; set; }
     protected override async Task OnInitializedAsync()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
+            .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"), options =>
+            {
+                options.AccessTokenProvider = async () =>
+                {
+                    var accessTokenResult = await AccessTokenProvider.RequestAccessToken();
+                    accessTokenResult.TryGetToken(out var accessToken);
+                    return accessToken.Value;
+                };
+            })
             .Build();
 
         hubConnection.On<string, string>("ReceiveMessage", (user, message) =>

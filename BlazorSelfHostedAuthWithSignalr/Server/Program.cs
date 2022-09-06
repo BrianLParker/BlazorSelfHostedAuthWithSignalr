@@ -1,9 +1,13 @@
+using BlazorSelfHostedAuthWithSignalr.Server;
 using BlazorSelfHostedAuthWithSignalr.Server.Data;
 using BlazorSelfHostedAuthWithSignalr.Server.Hubs;
 using BlazorSelfHostedAuthWithSignalr.Server.Models;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace BlazorSelfHostedAuthWithSignalr
 {
@@ -36,6 +40,8 @@ namespace BlazorSelfHostedAuthWithSignalr
 
             builder.Services.AddControllersWithViews();
             builder.Services.AddRazorPages();
+
+            builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>());
 
             var app = builder.Build();
 
