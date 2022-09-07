@@ -15,21 +15,38 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        var configuration = builder.Configuration.Get<LocalConfiguration>();
-        var baseAddressUri = new Uri(builder.HostEnvironment.BaseAddress);
+
+        //Hard Coded configuration
+        //LocalConfiguration configuration = GetDefaultConfiguration();
+
+        //Load configuration from appsettings.json
+        LocalConfiguration configuration = builder.Configuration.Get<LocalConfiguration>();
+
+        configuration.BaseAddressUri = new Uri(builder.HostEnvironment.BaseAddress);
 
         builder.Services.AddSingleton(configuration);
         builder.RootComponents.Add<App>(selector: "#app");
         builder.RootComponents.Add<HeadOutlet>(selector: "head::after");
-
-        builder.Services.AddHttpClient(name: configuration.Http.ClientName, client => client.BaseAddress = baseAddressUri)
+        builder.Services.AddHttpClient(
+            name: configuration.HostApi.ClientName,
+            client => client.BaseAddress = configuration.BaseAddressUri)
             .AddHttpMessageHandler<BaseAddressAuthorizationMessageHandler>();
 
+        builder.Services.AddScoped(typeof(AccountClaimsPrincipalFactory<RemoteUserAccount>), typeof(RolesAccountClaimsPrincipalFactory));
+
         builder.Services.AddScoped(serviceProvider =>
-            serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(name: configuration.Http.ClientName));
+            serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(name: configuration.HostApi.ClientName));
 
         builder.Services.AddApiAuthorization();
-
         await builder.Build().RunAsync();
+    }
+
+    private static LocalConfiguration GetDefaultConfiguration()
+    {
+        return new()
+        {
+            Chat = new() { Endpoint = "chathub" },
+            HostApi = new() { ClientName = "SelfHost.ServerAPI" }
+        };
     }
 }

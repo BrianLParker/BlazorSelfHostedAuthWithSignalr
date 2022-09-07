@@ -1,13 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using BlazorSelfHostedAuthWithSignalr.Server.Data;
 using BlazorSelfHostedAuthWithSignalr.Server.Hubs;
 using BlazorSelfHostedAuthWithSignalr.Server.Models;
 using BlazorSelfHostedAuthWithSignalr.Server.Models.Configurations;
+using IdentityModel;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -42,12 +47,26 @@ public class Program
             options.UseSqlServer(connectionString));
 
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+        builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, CustomUserClaimsPrincipalFactory>();
 
         builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
         builder.Services.AddIdentityServer()
-            .AddApiAuthorization<ApplicationUser, ApplicationDbContext>();
+            .AddApiAuthorization<ApplicationUser, ApplicationDbContext>(options =>
+            {
+                const string OpenId = "openid";
+
+                options.IdentityResources[OpenId].UserClaims.Add(JwtClaimTypes.Email);
+                options.ApiResources.Single().UserClaims.Add(JwtClaimTypes.Email);
+
+                options.IdentityResources[OpenId].UserClaims.Add(JwtClaimTypes.Role);
+                options.ApiResources.Single().UserClaims.Add(JwtClaimTypes.Role);
+
+            });
+
+        JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Remove(JwtClaimTypes.Role);
 
         builder.Services.AddAuthentication()
             .AddIdentityServerJwt();
@@ -87,12 +106,41 @@ public class Program
         app.UseAuthentication();
         app.UseAuthorization();
 
-
         app.MapRazorPages();
         app.MapControllers();
         app.MapHub<ChatHub>(pattern: $"/{configuration.Chat.Endpoint}");
         app.MapFallbackToFile(filePath: "index.html");
 
         app.Run();
+    }
+
+    public class CustomUserClaimsPrincipalFactory
+        : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>
+    {
+        public CustomUserClaimsPrincipalFactory(
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager,
+            IOptions<IdentityOptions> optionsAccessor)
+            : base(userManager, roleManager, optionsAccessor)
+        { }
+
+        public override async Task<ClaimsPrincipal> CreateAsync(ApplicationUser user)
+        {
+            ClaimsPrincipal principal = await base.CreateAsync(user);
+            var identity = (ClaimsIdentity)principal.Identity;
+
+            //var claims = new List<Claim>
+            //{
+            //    new Claim(CustomClaimTypes.DateOfBirth, JsonSerializer.Serialize(user.DateOfBirth))
+            //};
+
+            //if (!string.IsNullOrWhiteSpace(user.DisplayName))
+            //{
+            //    identity.AddClaim(new Claim(CustomClaimTypes.DisplayName, user.DisplayName));
+            //}
+
+            //identity.AddClaims(claims);
+            return principal;
+        }
     }
 }

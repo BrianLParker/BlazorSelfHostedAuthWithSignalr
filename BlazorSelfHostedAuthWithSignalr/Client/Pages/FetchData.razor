@@ -47,7 +47,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        HttpClient http = HttpClientFactory.CreateClient(Configuration.Http.ClientName);
+        HttpClient http = HttpClientFactory.CreateClient(Configuration.HostApi.ClientName);
 
         try
         {

@@ -4,6 +4,7 @@ using BlazorSelfHostedAuthWithSignalr.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorSelfHostedAuthWithSignalr.Server.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220907043446_HasDefaultUsers")]
+    partial class HasDefaultUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -287,22 +289,6 @@ namespace BlazorSelfHostedAuthWithSignalr.Server.Data.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = "41be5bfa-ca55-4d0b-8964-729fbaa300e2",
-                            ConcurrencyStamp = "f8795cf5-a57d-4011-8ab4-4e7a122f40fa",
-                            Name = "Administrator",
-                            NormalizedName = "ADMINISTRATOR"
-                        },
-                        new
-                        {
-                            Id = "96e6b283-2c38-48a0-8742-80bdf6862cdd",
-                            ConcurrencyStamp = "94415246-a51d-47e5-8e5f-f17816a3dcdc",
-                            Name = "Manager",
-                            NormalizedName = "MANAGER"
-                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -392,23 +378,6 @@ namespace BlazorSelfHostedAuthWithSignalr.Server.Data.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("AspNetUserRoles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            UserId = "4c8b3ed2-1d07-4c4c-bead-414ea6826c5c",
-                            RoleId = "41be5bfa-ca55-4d0b-8964-729fbaa300e2"
-                        },
-                        new
-                        {
-                            UserId = "4c8b3ed2-1d07-4c4c-bead-414ea6826c5c",
-                            RoleId = "96e6b283-2c38-48a0-8742-80bdf6862cdd"
-                        },
-                        new
-                        {
-                            UserId = "478017fd-1678-4eca-ba96-574e341b2d38",
-                            RoleId = "96e6b283-2c38-48a0-8742-80bdf6862cdd"
-                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
