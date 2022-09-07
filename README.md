@@ -1,1 +1,1 @@
-# BlazorSelfHostedAuthWithSignalr
+# Blazor Self Hosted Auth with Signalr

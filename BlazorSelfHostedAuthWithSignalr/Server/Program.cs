@@ -1,67 +1,146 @@
+using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using BlazorSelfHostedAuthWithSignalr.Server.Data;
+using BlazorSelfHostedAuthWithSignalr.Server.Hubs;
 using BlazorSelfHostedAuthWithSignalr.Server.Models;
+using BlazorSelfHostedAuthWithSignalr.Server.Models.Configurations;
+using IdentityModel;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
-namespace BlazorSelfHostedAuthWithSignalr
+namespace BlazorSelfHostedAuthWithSignalr;
+
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
+        var builder = WebApplication.CreateBuilder(args);
+        var configuration = builder.Configuration.Get<LocalConfiguration>();
+
+        // Add services to the container.
+        builder.Services.AddSingleton(configuration);
+        builder.Services.AddSignalR();
+
+        IEnumerable<string> responseCompressionMimeTypes =
+            ResponseCompressionDefaults.MimeTypes.Concat(new[] { "application/octet-stream" });
+
+        builder.Services.AddResponseCompression(responseCompressionOptions =>
+            responseCompressionOptions.MimeTypes = responseCompressionMimeTypes);
+
+        string connectionString = builder.Configuration.GetConnectionString(name: "DefaultConnection") ??
+            throw new InvalidOperationException(message: "Connection string 'DefaultConnection' not found.");
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(connectionString));
+
+        builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+        builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, CustomUserClaimsPrincipalFactory>();
+
+        builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            .AddRoles<IdentityRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>();
+
+        builder.Services.AddIdentityServer()
+            .AddApiAuthorization<ApplicationUser, ApplicationDbContext>(options =>
+            {
+                const string OpenId = "openid";
+
+                options.IdentityResources[OpenId].UserClaims.Add(JwtClaimTypes.Email);
+                options.ApiResources.Single().UserClaims.Add(JwtClaimTypes.Email);
+
+                options.IdentityResources[OpenId].UserClaims.Add(JwtClaimTypes.Role);
+                options.ApiResources.Single().UserClaims.Add(JwtClaimTypes.Role);
+
+            });
+
+        JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Remove(JwtClaimTypes.Role);
+
+        builder.Services.AddAuthentication()
+            .AddIdentityServerJwt();
+
+        builder.Services.AddControllersWithViews();
+        builder.Services.AddRazorPages();
+
+        builder.Services.TryAddEnumerable(
+            descriptor: ServiceDescriptor.Singleton<
+                IPostConfigureOptions<JwtBearerOptions>,
+                ConfigureChatHubBearerToken>());
+
+        var app = builder.Build();
+
+        // Configure the HTTP request pipeline.
+        app.UseResponseCompression();
+        if (app.Environment.IsDevelopment())
         {
-            var builder = WebApplication.CreateBuilder(args);
+            app.UseMigrationsEndPoint();
+            app.UseWebAssemblyDebugging();
+        }
+        else
+        {
+            app.UseExceptionHandler("/Error");
+            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+            app.UseHsts();
+        }
 
-            // Add services to the container.
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(connectionString));
-            builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+        app.UseHttpsRedirection();
 
-            builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
-                .AddEntityFrameworkStores<ApplicationDbContext>();
+        app.UseBlazorFrameworkFiles();
+        app.UseStaticFiles();
 
-            builder.Services.AddIdentityServer()
-                .AddApiAuthorization<ApplicationUser, ApplicationDbContext>();
+        app.UseRouting();
 
-            builder.Services.AddAuthentication()
-                .AddIdentityServerJwt();
+        app.UseIdentityServer();
+        app.UseAuthentication();
+        app.UseAuthorization();
 
-            builder.Services.AddControllersWithViews();
-            builder.Services.AddRazorPages();
+        app.MapRazorPages();
+        app.MapControllers();
+        app.MapHub<ChatHub>(pattern: $"/{configuration.Chat.Endpoint}");
+        app.MapFallbackToFile(filePath: "index.html");
 
-            var app = builder.Build();
+        app.Run();
+    }
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseMigrationsEndPoint();
-                app.UseWebAssemblyDebugging();
-            }
-            else
-            {
-                app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
-            }
+    public class CustomUserClaimsPrincipalFactory
+        : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>
+    {
+        public CustomUserClaimsPrincipalFactory(
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager,
+            IOptions<IdentityOptions> optionsAccessor)
+            : base(userManager, roleManager, optionsAccessor)
+        { }
 
-            app.UseHttpsRedirection();
+        public override async Task<ClaimsPrincipal> CreateAsync(ApplicationUser user)
+        {
+            ClaimsPrincipal principal = await base.CreateAsync(user);
+            var identity = (ClaimsIdentity)principal.Identity;
 
-            app.UseBlazorFrameworkFiles();
-            app.UseStaticFiles();
+            //var claims = new List<Claim>
+            //{
+            //    new Claim(CustomClaimTypes.DateOfBirth, JsonSerializer.Serialize(user.DateOfBirth))
+            //};
 
-            app.UseRouting();
+            //if (!string.IsNullOrWhiteSpace(user.DisplayName))
+            //{
+            //    identity.AddClaim(new Claim(CustomClaimTypes.DisplayName, user.DisplayName));
+            //}
 
-            app.UseIdentityServer();
-            app.UseAuthentication();
-            app.UseAuthorization();
-
-
-            app.MapRazorPages();
-            app.MapControllers();
-            app.MapFallbackToFile("index.html");
-
-            app.Run();
+            //identity.AddClaims(claims);
+            return principal;
         }
     }
 }
