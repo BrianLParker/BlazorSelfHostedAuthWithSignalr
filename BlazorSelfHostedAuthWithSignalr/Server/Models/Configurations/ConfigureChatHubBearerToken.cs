@@ -4,21 +4,20 @@
 
 using System;
 using System.Threading.Tasks;
-using BlazorSelfHostedAuthWithSignalr.Server.Models.Configurations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
-namespace BlazorSelfHostedAuthWithSignalr.Server;
+namespace BlazorSelfHostedAuthWithSignalr.Server.Models.Configurations;
 
-public class ConfigureJwtBearerOptions : IPostConfigureOptions<JwtBearerOptions>
+public class ConfigureChatHubBearerToken : IPostConfigureOptions<JwtBearerOptions>
 {
     private readonly LocalConfiguration config;
 
-    public ConfigureJwtBearerOptions(IConfiguration configuration) =>
-        this.config = configuration.Get<LocalConfiguration>();
+    public ConfigureChatHubBearerToken(IConfiguration configuration) =>
+        config = configuration.Get<LocalConfiguration>();
 
     public void PostConfigure(string name, JwtBearerOptions options)
     {

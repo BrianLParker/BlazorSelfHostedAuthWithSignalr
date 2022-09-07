@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using BlazorSelfHostedAuthWithSignalr.Server;
 using BlazorSelfHostedAuthWithSignalr.Server.Data;
 using BlazorSelfHostedAuthWithSignalr.Server.Hubs;
 using BlazorSelfHostedAuthWithSignalr.Server.Models;
@@ -23,19 +23,24 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
-        var config = builder.Configuration.Get<LocalConfiguration>();
+        var configuration = builder.Configuration.Get<LocalConfiguration>();
 
         // Add services to the container.
+        builder.Services.AddSingleton(configuration);
         builder.Services.AddSignalR();
-        builder.Services.AddResponseCompression(opts =>
-        {
-            opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-                new[] { "application/octet-stream" });
-        });
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+        IEnumerable<string> responseCompressionMimeTypes =
+            ResponseCompressionDefaults.MimeTypes.Concat(new[] { "application/octet-stream" });
+
+        builder.Services.AddResponseCompression(responseCompressionOptions =>
+            responseCompressionOptions.MimeTypes = responseCompressionMimeTypes);
+
+        string connectionString = builder.Configuration.GetConnectionString(name: "DefaultConnection") ??
+            throw new InvalidOperationException(message: "Connection string 'DefaultConnection' not found.");
+
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString));
+
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
         builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -50,7 +55,10 @@ public class Program
         builder.Services.AddControllersWithViews();
         builder.Services.AddRazorPages();
 
-        builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>());
+        builder.Services.TryAddEnumerable(
+            descriptor: ServiceDescriptor.Singleton<
+                IPostConfigureOptions<JwtBearerOptions>,
+                ConfigureChatHubBearerToken>());
 
         var app = builder.Build();
 
@@ -82,7 +90,7 @@ public class Program
 
         app.MapRazorPages();
         app.MapControllers();
-        app.MapHub<ChatHub>(pattern: $"/{config.Chat.Endpoint}");
+        app.MapHub<ChatHub>(pattern: $"/{configuration.Chat.Endpoint}");
         app.MapFallbackToFile(filePath: "index.html");
 
         app.Run();
