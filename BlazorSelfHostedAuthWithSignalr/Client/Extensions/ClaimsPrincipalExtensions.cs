@@ -1,5 +1,5 @@
-﻿using System.Security.Claims;
-using System;
+﻿using System;
+using System.Security.Claims;
 
 namespace BlazorSelfHostedAuthWithSignalr.Client.Extensions;
 
