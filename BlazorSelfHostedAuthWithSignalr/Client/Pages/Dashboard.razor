@@ -1,5 +1,8 @@
 ﻿@page "/dashboard/{UserId:guid}"
 @using BlazorSelfHostedAuthWithSignalr.Client.Extensions
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@attribute [Authorize]
 
 <PageTitle>Dashboard</PageTitle>
 <ValidateUserId UserId="@UserId">
