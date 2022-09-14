@@ -1,0 +1,13 @@
+﻿@page "/dashboard/{UserId:guid}"
+@using BlazorSelfHostedAuthWithSignalr.Client.Extensions
+
+<PageTitle>Dashboard</PageTitle>
+<ValidateUserId UserId="@UserId">
+    <h3>Dashboard for user @UserId</h3>
+</ValidateUserId>
+@code {
+    [Inject]
+    private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+
+    [Parameter] public Guid UserId { get; set; } = default!;
+}

@@ -1,4 +1,5 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using BlazorSelfHostedAuthWithSignalr.Client.Extensions
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Blazor Auth + Signalr</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -14,6 +15,13 @@
                 <span class="oi oi-home" aria-hidden="true"></span> Home
             </NavLink>
         </div>
+        <AuthorizeView>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="@($"dashboard/{context.User.FindFirstValue("sub")}")">
+                    <span class="oi oi-chat" aria-hidden="true"></span> Dashboard
+                </NavLink>
+            </div>
+        </AuthorizeView>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="counter">
                 <span class="oi oi-plus" aria-hidden="true"></span> Counter
@@ -24,12 +32,17 @@
                 <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
             </NavLink>
         </div>
-        <AuthorizeView Roles="Manager">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="chat">
-                <span class="oi oi-chat" aria-hidden="true"></span> Chat
+            <NavLink class="nav-link" href="claims">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Claims
             </NavLink>
         </div>
+        <AuthorizeView Roles="Manager">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="chat">
+                    <span class="oi oi-chat" aria-hidden="true"></span> Chat
+                </NavLink>
+            </div>
         </AuthorizeView>
     </nav>
 </div>
